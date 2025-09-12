@@ -1,22 +1,27 @@
 // src/api/todos.js
+const API_URL = "http://localhost:5000/api/todos"; // 👈 Force backend URL
+
 export async function getTodos() {
-  const res = await fetch("/api/todos");
+  const res = await fetch(API_URL);
   if (!res.ok) throw new Error("Failed to fetch todos");
   return res.json();
 }
 
-export async function createTodo(text) {
-  const res = await fetch("/api/todos", {
+export async function createTodo(title, description = "") {
+  const res = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ title, description }),
   });
-  if (!res.ok) throw new Error("Failed to create todo");
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to create todo: ${errorText}`);
+  }
   return res.json();
 }
 
 export async function updateTodo(id, updates) {
-  const res = await fetch(`/api/todos/${id}`, {
+  const res = await fetch(`${API_URL}/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updates),
@@ -26,7 +31,7 @@ export async function updateTodo(id, updates) {
 }
 
 export async function deleteTodo(id) {
-  const res = await fetch(`/api/todos/${id}`, { method: "DELETE" });
+  const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete todo");
   return res.json();
 }

@@ -1,1 +1,6 @@
+@import url("https://api.fontshare.com/v2/css?f[]=general-sans@400,700&display=swap");
 @import "tailwindcss";
+
+body {
+  font-family: "Sour Gummy", cursive;
+}
