@@ -1,5 +1,5 @@
 // src/api/todos.js
-const API_URL = "http://localhost:5000/api/todos"; // 👈 Force backend URL
+const API_URL = "http://localhost:5000/api/todos";
 
 export async function getTodos() {
   const res = await fetch(API_URL);

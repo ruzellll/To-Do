@@ -7,8 +7,9 @@ import {
   Trash2,
   Square,
   CheckSquare,
-  ChevronLeft,
-  ChevronRight,
+  Pencil,
+  X,
+  Check,
 } from "lucide-react";
 import "./index.css";
 
@@ -16,8 +17,10 @@ function App() {
   const [todos, setTodos] = useState([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const todosPerPage = 5;
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [filter, setFilter] = useState("All"); // 🔥 New filter state
 
   useEffect(() => {
     getTodos().then(setTodos).catch(console.error);
@@ -32,14 +35,12 @@ function App() {
     setTitle("");
     setDescription("");
 
-    // Animate Add button pulse
     gsap.fromTo(
       "#add-btn",
       { scale: 1 },
       { scale: 1.1, duration: 0.2, yoyo: true, repeat: 1, ease: "power1.inOut" }
     );
 
-    // Animate the new todo itself
     setTimeout(() => {
       const item = document.getElementById(`todo-${newTodo.id}`);
       if (item) {
@@ -72,14 +73,34 @@ function App() {
     setTodos((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const totalPages = Math.ceil(todos.length / todosPerPage);
-  const indexOfLastTodo = currentPage * todosPerPage;
-  const indexOfFirstTodo = indexOfLastTodo - todosPerPage;
-  const currentTodos = todos.slice(indexOfFirstTodo, indexOfLastTodo);
-
-  const goToPage = (page) => {
-    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  const startEditing = (todo) => {
+    setEditingId(todo.id);
+    setEditTitle(todo.title);
+    setEditDescription(todo.description || "");
   };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditTitle("");
+    setEditDescription("");
+  };
+
+  const saveUpdate = async (id) => {
+    if (!editTitle.trim()) return;
+    const updated = await updateTodo(id, {
+      title: editTitle,
+      description: editDescription,
+    });
+    setTodos(todos.map((t) => (t.id === id ? updated : t)));
+    cancelEditing();
+  };
+
+  // 🔥 Filtering logic
+  const filteredTodos = todos.filter((todo) => {
+    if (filter === "Completed") return todo.completed;
+    if (filter === "Uncompleted") return !todo.completed;
+    return true; // "All"
+  });
 
   return (
     <div className="min-h-screen bg-yellow-50 flex justify-center p-6">
@@ -114,89 +135,111 @@ function App() {
           </form>
         </div>
 
+        {/* 🔥 Filter Controls */}
+        <div className="flex justify-center gap-3 p-4 border-b border-yellow-200 bg-yellow-50">
+          {["All", "Completed", "Uncompleted"].map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                filter === f
+                  ? "bg-yellow-500 text-white"
+                  : "bg-yellow-200 hover:bg-yellow-300 text-yellow-800"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
         {/* Todo List Section */}
         <div className="p-6 flex-1 overflow-y-auto max-h-full">
           <ul className="space-y-3">
-            {currentTodos.length === 0 && (
-              <li className="text-gray-500 text-center">No tasks yet ✨</li>
+            {filteredTodos.length === 0 && (
+              <li className="text-gray-500 text-center">No tasks found</li>
             )}
-            {currentTodos.map((todo) => (
+            {filteredTodos.map((todo) => (
               <li
                 key={todo.id}
                 id={`todo-${todo.id}`}
                 className="flex justify-between items-start bg-yellow-50 hover:bg-yellow-100 transition-colors px-4 py-3 rounded-lg shadow-sm"
               >
-                <label
-                  className="flex gap-3 items-start w-full cursor-pointer"
-                  onClick={() => handleToggle(todo.id)}
-                >
-                  {todo.completed ? (
-                    <CheckSquare className="w-5 h-5 text-yellow-600" />
-                  ) : (
-                    <Square className="w-5 h-5 text-yellow-600" />
-                  )}
-                  <div className="flex flex-col">
-                    <span
-                      className={
-                        todo.completed
-                          ? "line-through text-gray-400 font-medium"
-                          : "text-yellow-900 font-semibold"
-                      }
-                    >
-                      {todo.title}
-                    </span>
-                    {todo.description && (
-                      <span className="text-gray-600 text-sm">
-                        {todo.description}
-                      </span>
-                    )}
+                {editingId === todo.id ? (
+                  <div className="flex flex-col gap-2 w-full">
+                    <input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="border border-yellow-300 rounded-lg px-3 py-2 outline-none"
+                    />
+                    <textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      className="border border-yellow-300 rounded-lg px-3 py-2 outline-none resize-none"
+                      rows={2}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => saveUpdate(todo.id)}
+                        className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg flex items-center gap-1"
+                      >
+                        <Check className="w-4 h-4" /> Save
+                      </button>
+                      <button
+                        onClick={cancelEditing}
+                        className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1 rounded-lg flex items-center gap-1"
+                      >
+                        <X className="w-4 h-4" /> Cancel
+                      </button>
+                    </div>
                   </div>
-                </label>
-                <button
-                  onClick={() => handleDelete(todo.id)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+                ) : (
+                  <>
+                    <label
+                      className="flex gap-3 items-start w-full cursor-pointer"
+                      onClick={() => handleToggle(todo.id)}
+                    >
+                      {todo.completed ? (
+                        <CheckSquare className="w-5 h-5 text-yellow-600" />
+                      ) : (
+                        <Square className="w-5 h-5 text-yellow-600" />
+                      )}
+                      <div className="flex flex-col break-words max-w-[220px] sm:max-w-[260px] md:max-w-[300px]">
+                        <span
+                          className={
+                            todo.completed
+                              ? "line-through text-gray-400 font-medium break-words"
+                              : "text-yellow-900 font-semibold break-words"
+                          }
+                        >
+                          {todo.title}
+                        </span>
+                        {todo.description && (
+                          <span className="text-gray-600 text-sm break-words">
+                            {todo.description}
+                          </span>
+                        )}
+                      </div>
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => startEditing(todo)}
+                        className="text-blue-500 hover:text-blue-700"
+                      >
+                        <Pencil className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(todo.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </>
+                )}
               </li>
             ))}
           </ul>
         </div>
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 p-4 border-t border-yellow-200 bg-yellow-50">
-            <button
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="p-2 rounded-md bg-yellow-200 hover:bg-yellow-300 disabled:opacity-50"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-
-            {[...Array(totalPages)].map((_, i) => (
-              <button
-                key={i + 1}
-                onClick={() => goToPage(i + 1)}
-                className={`px-3 py-1 rounded-md text-sm ${
-                  currentPage === i + 1
-                    ? "bg-yellow-500 text-white"
-                    : "bg-yellow-200 hover:bg-yellow-300"
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-
-            <button
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="p-2 rounded-md bg-yellow-200 hover:bg-yellow-300 disabled:opacity-50"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
